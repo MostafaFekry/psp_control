@@ -4,11 +4,11 @@ from . import __version__ as app_version
 
 app_name = "psp_control"
 app_title = "PSP Control"
-app_publisher = "MostafaFekry"
+app_publisher = "Systematic-eg"
 app_description = "Control item manufacture and tender"
 app_icon = "octicon octicon octicon-tools"
 app_color = "grey"
-app_email = "mostafa.fekry@gmail.com"
+app_email = "m.fekry@systematiceg.com"
 app_license = "MIT"
 
 # Includes in <head>
@@ -137,6 +137,12 @@ doc_events = {
 fixtures = [{"dt": "Custom Script", "filters": [["name", "in", [
 		"Stock Entry-Client",
 		"Work Order-Client"
+	]]]}
+	,{"dt": "Stock Entry Type", "filters": [["name", "in", [
+		"Send To Reserved",
+		"Return From Reserved",
+		"Send To WIP",
+		"Return From WIP"
 	]]]},
     {"dt": "Custom Field", "filters": [["name", "like", 
         "%collect_production_item"

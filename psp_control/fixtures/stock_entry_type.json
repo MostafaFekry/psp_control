@@ -1,0 +1,42 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Stock Entry Type",
+  "modified": "2019-08-19 21:12:38.571134",
+  "name": "Return From WIP",
+  "parent": null,
+  "parentfield": null,
+  "parenttype": null,
+  "purpose": "Material Transfer"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Stock Entry Type",
+  "modified": "2019-08-19 21:13:00.310115",
+  "name": "Send To WIP",
+  "parent": null,
+  "parentfield": null,
+  "parenttype": null,
+  "purpose": "Material Transfer"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Stock Entry Type",
+  "modified": "2019-08-19 21:13:14.148575",
+  "name": "Return From Reserved",
+  "parent": null,
+  "parentfield": null,
+  "parenttype": null,
+  "purpose": "Material Transfer"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Stock Entry Type",
+  "modified": "2019-08-19 21:13:27.098988",
+  "name": "Send To Reserved",
+  "parent": null,
+  "parentfield": null,
+  "parenttype": null,
+  "purpose": "Material Transfer"
+ }
+]
