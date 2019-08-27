@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include psp_control *.css
+recursive-include psp_control *.csv
+recursive-include psp_control *.html
+recursive-include psp_control *.ico
+recursive-include psp_control *.js
+recursive-include psp_control *.json
+recursive-include psp_control *.md
+recursive-include psp_control *.png
+recursive-include psp_control *.py
+recursive-include psp_control *.svg
+recursive-include psp_control *.txt
+recursive-exclude psp_control *.pyc

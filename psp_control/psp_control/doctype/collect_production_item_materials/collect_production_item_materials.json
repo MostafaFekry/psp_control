@@ -1,0 +1,275 @@
+{
+ "creation": "2019-08-16 21:41:11.001172",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "source_warehouse",
+  "column_break_3",
+  "item_name",
+  "is_stock_item",
+  "section_break_5",
+  "description",
+  "col_break1",
+  "image",
+  "image_view",
+  "quantity_and_rate",
+  "qty",
+  "uom",
+  "col_break2",
+  "stock_qty",
+  "stock_uom",
+  "conversion_factor",
+  "section_break11",
+  "reserved_qty_at_reserve_warehouse",
+  "col_break4",
+  "transferred_qty_to_wip_warehouse",
+  "available_qty_at_source_warehouse",
+  "rate_amount_section",
+  "rate",
+  "base_rate",
+  "column_break_21",
+  "amount",
+  "base_amount",
+  "section_break_18",
+  "scrap",
+  "qty_consumed_per_unit",
+  "original_item"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_5",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Item Description",
+   "print_width": "250px",
+   "width": "250px"
+  },
+  {
+   "fieldname": "col_break1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach",
+   "hidden": 1,
+   "label": "Image",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "image_view",
+   "fieldtype": "Image",
+   "label": "Image View",
+   "options": "image"
+  },
+  {
+   "fieldname": "quantity_and_rate",
+   "fieldtype": "Section Break",
+   "label": "Quantity and Rate"
+  },
+  {
+   "columns": 1,
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM",
+   "reqd": 1
+  },
+  {
+   "fieldname": "conversion_factor",
+   "fieldtype": "Float",
+   "label": "Conversion Factor",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "col_break2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Stock Qty",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock UOM",
+   "options": "UOM",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate_amount_section",
+   "fieldtype": "Section Break",
+   "label": "Rate & Amount"
+  },
+  {
+   "columns": 1,
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate",
+   "options": "currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "base_rate",
+   "fieldtype": "Currency",
+   "label": "Basic Rate (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_21",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_amount",
+   "fieldtype": "Currency",
+   "label": "Amount (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_18",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "scrap",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Scrap %",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "qty_consumed_per_unit",
+   "fieldtype": "Float",
+   "label": "Qty Consumed Per Unit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "original_item",
+   "fieldtype": "Link",
+   "label": "Original Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break11",
+   "fieldtype": "Section Break",
+   "label": "Qty Transfer Details"
+  },
+  {
+   "allow_on_submit": 1,
+   "columns": 1,
+   "description": "Available Qty at Source Warehouse",
+   "fieldname": "available_qty_at_source_warehouse",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Available Qty",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "description": "Transferred Qty to WIP Warehouse",
+   "fieldname": "transferred_qty_to_wip_warehouse",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Transferred Qty",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "description": "Reserved Qty at Reserve Warehouse",
+   "fieldname": "reserved_qty_at_reserve_warehouse",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Reserved Qty",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_break4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_stock_item",
+   "fieldtype": "Check",
+   "label": "Maintain Stock",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "modified": "2019-08-27 13:52:32.741410",
+ "modified_by": "Administrator",
+ "module": "PSP Control",
+ "name": "Collect Production Item Materials",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
