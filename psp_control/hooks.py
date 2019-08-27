@@ -4,11 +4,11 @@ from . import __version__ as app_version
 
 app_name = "psp_control"
 app_title = "PSP Control"
-app_publisher = "Systematic-eg"
+app_publisher = "MostafaFekry"
 app_description = "Control item manufacture and tender"
 app_icon = "octicon octicon octicon-tools"
 app_color = "grey"
-app_email = "m.fekry@systematiceg.com"
+app_email = "mostafa.fekry@gmail.com"
 app_license = "MIT"
 
 # Includes in <head>
