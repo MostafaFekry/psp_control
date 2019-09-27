@@ -145,6 +145,6 @@ fixtures = [{"dt": "Custom Script", "filters": [["name", "in", [
 		"Return From WIP"
 	]]]},
     {"dt": "Custom Field", "filters": [["name", "like", 
-        "%collect_production_item"
+        "%collect_production_item%"
     ]]}
 ]

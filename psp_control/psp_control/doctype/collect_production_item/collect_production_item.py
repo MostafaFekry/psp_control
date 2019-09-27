@@ -550,7 +550,7 @@ def make_material_request(source_name, target_doc=None):
 				"stock_uom": "stock_uom",
 				"stock_qty": "stock_qty"
 			},
-			"condition": lambda doc: (doc.stock_qty - doc.reserved_qty_at_reserve_warehouse - doc.transferred_qty_to_wip_warehouse - requested_item_qty.get(doc.name, 0) - doc.available_qty_at_source_warehouse) > 0,
+			"condition": lambda doc: ((doc.stock_qty - doc.reserved_qty_at_reserve_warehouse - doc.transferred_qty_to_wip_warehouse - requested_item_qty.get(doc.name, 0) - doc.available_qty_at_source_warehouse) > 0) and doc.is_stock_item == 1,
 			"postprocess": update_item
 		}
 	}, target_doc, postprocess)
