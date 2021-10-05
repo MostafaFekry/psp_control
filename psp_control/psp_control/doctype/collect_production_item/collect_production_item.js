@@ -322,57 +322,67 @@ frappe.ui.form.on("Collect Production Item", {
 		});
 	},
 	add_new_material_item: function(frm) {
-		var fields = [
-			{
-				fieldtype:'Table', fieldname: 'trans_items',reqd: 1,label: __(''),description: __('Allow to reduce quantity by set as (-1)'),
-				fields: [
-					{
-						fieldtype:'Link',
-						fieldname:'item_code',
-						label: __('Item Code'),
-						options: 'Item',
-						reqd: 1,
-						in_list_view:1,
-						get_query: function (doc) {
-							return { filters: [["Item", "name", "!=", cur_frm.doc.item]] };
-						}
-					},
-					{
-						fieldtype:'Float',
-						fieldname:'qty',
-						label: __('Qty'),
-						reqd: 1,
-						in_list_view:1
-					}
-				],
-				data: frm.message,
-				get_data: function() {
-					return frm.message
-				}
-			}
-		]
-		var d = new frappe.ui.Dialog({
+		const cannot_add_row = false;
+		const child_docname = "items";
+
+		this.data = [];
+		const fields = [{
+			fieldtype:'Link',
+			fieldname:"item_code",
+			options: 'Item',
+			in_list_view: 1,
+			read_only: 0,
+			disabled: 0,
+			label: __('Item Code')
+		}, {
+			fieldtype:'Float',
+			fieldname:"qty",
+			default: 0,
+			read_only: 0,
+			in_list_view: 1,
+			label: __('Qty')
+		}];
+
+
+		const dialog = new frappe.ui.Dialog({
 			title: __("Add or Reduce Items Materials"),
-			fields: fields,
+			fields: [
+				{
+					fieldname: "trans_items",
+					fieldtype: "Table",
+					label: "Items",
+					description: __('Allow to reduce quantity by set as (-1)'),
+					cannot_add_rows: cannot_add_row,
+					in_place_edit: true,
+					reqd: 1,
+					data: this.data,
+					get_data: () => {
+						return this.data;
+					},
+					fields: fields
+				},
+			],
+
 			primary_action: function() {
-				var trans_items = d.get_values()["trans_items"];
+				var trans_items = this.get_values()["trans_items"];
 				frm.call({
 					method: 'psp_control.psp_control.doctype.collect_production_item.collect_production_item.make_add_new_material',
 					args: {
-						trans_items: trans_items,
-						reference_name: frm.docname
+						'trans_items': trans_items,
+						'reference_name': frm.docname
 					},
 					freeze: true,
 					callback: function() {
 						frm.reload_doc();
-						d.hide();
-						refresh_field("items");
 					}
 				});
+				this.hide();
+				refresh_field("items");
 			},
 			primary_action_label: __('Submit')
 		});
-		d.show();
+
+		dialog.show();
 	},
 	delete_material_item: function(frm) {
 		var d = new frappe.ui.Dialog({
