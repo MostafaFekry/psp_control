@@ -1,0 +1,41 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Sales Order",
+  "enabled": 1,
+  "modified": "2021-11-29 08:54:38.476037",
+  "name": "Sales Order-Form",
+  "parent": null,
+  "parentfield": null,
+  "parenttype": null,
+  "script": "frappe.ui.form.on('Sales Order', {\r\n\trefresh: function(frm) {\r\n\t    if (frm.doc.docstatus==1) {\r\n\t        if(frm.doc.status !== 'Closed') {\r\n\t\t\t\t\t\tif(frm.doc.status !== 'On Hold') {\r\n\t\t\t\t\t\t\tif(flt(frm.doc.per_delivered, 6) < 100) {\r\n\t\t\t\t\t\t\t    frm.add_custom_button(__('Collect Production Item'), () => frm.events.make_collect_production(frm), 'Create');\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t        }\r\n\r\n\r\n\t    }\r\n\r\n\t},\r\n\tmake_collect_production: function(frm){\r\n\t\tfrappe.call({\r\n\t\t\tmethod:\"psp_control.psp_control.doctype.collect_production_item.collect_production_item.get_collect_production_item_items\",\r\n\t\t\targs: {\r\n\t\t\t\tcompany: frm.doc.company,\r\n\t\t\t\tsales_order: frm.docname\r\n\t\t\t},\r\n\t\t\tcallback: function(r) {\r\n\t\t\t\tif(!r.message) {\r\n\t\t\t\t\tfrappe.msgprint({\r\n\t\t\t\t\t\ttitle: __('Collect Production not created'),\r\n\t\t\t\t\t\tmessage: __('No Items with Bill of Materials to Manufacture'),\r\n\t\t\t\t\t\tindicator: 'orange'\r\n\t\t\t\t\t});\r\n\t\t\t\t\treturn;\r\n\t\t\t\t}\r\n\t\t\t\telse if(!r.message) {\r\n\t\t\t\t\tfrappe.msgprint({\r\n\t\t\t\t\t\ttitle: __('Collect Production not created'),\r\n\t\t\t\t\t\tmessage: __('Collect Production already created for all items'),\r\n\t\t\t\t\t\tindicator: 'orange'\r\n\t\t\t\t\t});\r\n\t\t\t\t\treturn;\r\n\t\t\t\t} else {\r\n\t\t\t\t\tconst fields = [{\r\n\t\t\t\t\t\tlabel: 'Items',\r\n\t\t\t\t\t\tfieldtype: 'Table',\r\n\t\t\t\t\t\tfieldname: 'items',\r\n\t\t\t\t\t\tdescription: __('Select item and Qty for Collect Production'),\r\n\t\t\t\t\t\tfields: [{\r\n\t\t\t\t\t\t\tfieldtype: 'Read Only',\r\n\t\t\t\t\t\t\tfieldname: 'item_code',\r\n\t\t\t\t\t\t\tlabel: __('Item Code'),\r\n\t\t\t\t\t\t\tin_list_view: 1\r\n\t\t\t\t\t\t}, {\r\n\t\t\t\t\t\t\tfieldtype: 'Float',\r\n\t\t\t\t\t\t\tfieldname: 'pending_qty',\r\n\t\t\t\t\t\t\treqd: 1,\r\n\t\t\t\t\t\t\tlabel: __('Qty'),\r\n\t\t\t\t\t\t\tin_list_view: 1\r\n\t\t\t\t\t\t}, {\r\n\t\t\t\t\t\t\tfieldtype: 'Date',\r\n\t\t\t\t\t\t\tfieldname: 'delivery_date',\r\n\t\t\t\t\t\t\treqd: 1,\r\n\t\t\t\t\t\t\tlabel: __('Delivery Date'),\r\n\t\t\t\t\t\t\tin_list_view: 1\r\n\t\t\t\t\t\t}, {\r\n\t\t\t\t\t\t\tfieldtype: 'Data',\r\n\t\t\t\t\t\t\tfieldname: 'sales_order_item',\r\n\t\t\t\t\t\t\treqd: 1,\r\n\t\t\t\t\t\t\tlabel: __('Sales Order Item'),\r\n\t\t\t\t\t\t\thidden: 1\r\n\t\t\t\t\t\t}],\r\n\t\t\t\t\t\tdata: r.message,\r\n\t\t\t\t\t\tget_data: () => {\r\n\t\t\t\t\t\t\treturn r.message\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}]\r\n\t\t\t\t\tvar d = new frappe.ui.Dialog({\r\n\t\t\t\t\t\ttitle: __('Select Items to Collect Production'),\r\n\t\t\t\t\t\tfields: fields,\r\n\t\t\t\t\t\tprimary_action: function() {\r\n\t\t\t\t\t\t\tvar data = {items: d.fields_dict.items.grid.get_selected_children()};\r\n\t\t\t\t\t\t\tfrappe.call({\r\n\t\t\t\t\t\t\t\tmethod: \"psp_control.psp_control.doctype.collect_production_item.collect_production_item.make_collect_production_item_items\",\r\n\t\t\t\t\t\t\t\targs: {\r\n\t\t\t\t\t\t\t\t\titems: data,\r\n\t\t\t\t\t\t\t\t\tcompany: frm.doc.company,\r\n\t\t\t\t\t\t\t\t\tsales_order: frm.docname,\r\n\t\t\t\t\t\t\t\t\tproject: frm.project\r\n\t\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\t\tfreeze: true,\r\n\t\t\t\t\t\t\t\tcallback: function(r) {\r\n\t\t\t\t\t\t\t\t\tif(r.message) {\r\n\t\t\t\t\t\t\t\t\t\tfrappe.msgprint({\r\n\t\t\t\t\t\t\t\t\t\t\tmessage: __('Collect Production Item Created: {0}', [r.message.map(function(d) {\r\n\t\t\t\t\t\t\t\t\t\t\t\t\treturn repl('<a href=\"/app/collect-production-item/%(name)s\">%(name)s</a>', {name:d})\r\n\t\t\t\t\t\t\t\t\t\t\t\t}).join(', ')]),\r\n\t\t\t\t\t\t\t\t\t\t\tindicator: 'green'\r\n\t\t\t\t\t\t\t\t\t\t})\r\n\t\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t\t\td.hide();\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t});\r\n\t\t\t\t\t\t},\r\n\t\t\t\t\t\tprimary_action_label: __('Create')\r\n\t\t\t\t\t});\r\n\t\t\t\t\td.show();\r\n\t\t\t\t}\r\n\t\t\t}\r\n\t\t});\r\n\t}\r\n});\r\n",
+  "view": "Form"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Work Order",
+  "enabled": 1,
+  "modified": "2021-12-07 16:36:02.799519",
+  "name": "Work Order-Form",
+  "parent": null,
+  "parentfield": null,
+  "parenttype": null,
+  "script": "frappe.ui.form.on('Work Order', {\n\tonload(frm) {\n\t\t// your code here\n\t\tif (frm.doc.bom_no) {\n    \t\tfrappe.db.get_doc(\"BOM\", frm.doc.bom_no)\n\t\t\t\t.then((doc) => {\n\t\t\t\t\tfrm.set_value({\n\t\t\t\t\t\t\"collect_production_item\": doc.collect_production_item,\n\t\t\t\t\t\t\"sales_order\": doc.sales_order,\n\t\t\t\t\t\t\"skip_transfer\":1\n\t\t\t\t\t})\n\t\t\t\t});\n    \t\n\t\t}\n\t\tcur_frm.add_fetch('BOM',  'collect_production_item',  'collect_production_item');\n\t}\n})",
+  "view": "Form"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Stock Entry",
+  "enabled": 1,
+  "modified": "2021-12-07 16:36:58.310721",
+  "name": "Stock Entry-Form",
+  "parent": null,
+  "parentfield": null,
+  "parenttype": null,
+  "script": "frappe.ui.form.on('Stock Entry', {\n\trefresh(frm) {\n\t\t// your code here\n\t\tif (frm.doc.stock_entry_type ==='Manufacture') { \n\t\t    frm.set_df_property(\"collect_production_item\", \"reqd\", frm.doc.stock_entry_type==\"Manufacture\");\n\t\t    frm.add_fetch('work_order',  'collect_production_item',  'collect_production_item');\n\t\t    if (!frm.doc.collect_production_item) {\n    \t\tfrappe.db.get_doc(\"Work Order\", frm.doc.work_order)\n\t\t\t\t.then((doc) => {\n\t\t\t\t\tfrm.set_value({\n\t\t\t\t\t\t\"collect_production_item\": doc.collect_production_item\n\t\t\t\t\t})\n\t\t\t\t});\n    \t\n    \t\t}\n\t\t}\n\t\telse\n\t\t{\n\t\t   frm.toggle_reqd(\"collect_production_item\", false);\n\t\t}\n\t}\n})",
+  "view": "Form"
+ }
+]

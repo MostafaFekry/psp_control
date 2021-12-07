@@ -24,7 +24,7 @@ frappe.ui.form.on("Collect Production Item", {
 				}
 			}
 		});
-		
+
 		frm.set_query("wip_warehouse", function(doc) {
 			return {
 				filters: {
@@ -33,7 +33,7 @@ frappe.ui.form.on("Collect Production Item", {
 				}
 			}
 		});
-		
+
 		frm.set_query("reserve_warehouse", function(doc) {
 			return {
 				filters: {
@@ -42,7 +42,7 @@ frappe.ui.form.on("Collect Production Item", {
 				}
 			}
 		});
-		
+
 		frm.set_query("sales_order", function() {
 			return {
 				filters: {
@@ -50,7 +50,7 @@ frappe.ui.form.on("Collect Production Item", {
 				}
 			}
 		});
-		
+
 		frm.set_query("project", function() {
 			return{
 				filters:[
@@ -58,14 +58,14 @@ frappe.ui.form.on("Collect Production Item", {
 				]
 			};
 		});
-		
+
 		frm.set_query("item_code", "items", function() {
 			return {
 				query: "erpnext.controllers.queries.item_query",
 				filters: [["Item", "name", "!=", cur_frm.doc.item]]
 			};
 		});
-		
+
 		frm.set_query("source_warehouse", "items", function() {
 			return {
 				filters: {
@@ -73,11 +73,11 @@ frappe.ui.form.on("Collect Production Item", {
 				}
 			};
 		});
-		
+
 		// formatter for material request item
 		frm.set_indicator_formatter('item_code',
 			function(doc) { return (doc.stock_qty<=doc.available_qty_at_source_warehouse) ? "green" : "orange" })
-		
+
 
 	},
 
@@ -98,7 +98,7 @@ frappe.ui.form.on("Collect Production Item", {
 
 	refresh: function(frm) {
 		frm.toggle_enable("item", frm.doc.__islocal);
-		
+
 		frm.set_indicator_formatter('item_code',
 			function(doc) {
 				if (doc.original_item){
@@ -107,18 +107,18 @@ frappe.ui.form.on("Collect Production Item", {
 				return ""
 			}
 		)
-		
+
 		if (!frm.doc.__islocal && frm.doc.docstatus<2) {
 			if(flt(frm.doc.per_reserved, 6) < 100 || flt(frm.doc.per_transferred) < 100) {
 			    // Update Cost & Available Qty
 			    frm.add_custom_button(__("Update Cost & Available Qty"), function() {
-					frm.events.update_cost(frm);
+					frm.events.update_cost(frm, true);
 				});
 			}
 		}
-		
+
 		if(frm.doc.docstatus==1) {
-			
+
 			if(frm.has_perm("submit")) {
 				if(frm.doc.status === 'On Hold') {
 				   // un-hold
@@ -138,28 +138,35 @@ frappe.ui.form.on("Collect Production Item", {
 				   }, __("Status"));
 			   }
 			}
-		
+
 			if(frm.doc.status !== 'To BOM' && frm.doc.status !== 'To Work Order' && frm.doc.status !== 'Completed' && frm.doc.status !== 'To Finish Good') {
 				if(frm.doc.status !== 'On Hold') {
-					
+
 					frm.add_custom_button(__("Create Material Request"), function() {
 						frappe.model.open_mapped_doc({
 							method: "psp_control.psp_control.doctype.collect_production_item.collect_production_item.make_material_request",
 							frm: frm
 						});
 					});
-					
-					frm.add_custom_button(__('Add or Reduce Material'), () => frm.events.add_new_material_item(frm), __("Update Materials"));
+
+					frm.add_custom_button(__('Add or Reduce Material'), () => {
+				erpnext.utils.add_new_material_item({
+					frm: frm,
+					child_docname: "items",
+					child_doctype: "Sales Order Detail",
+					cannot_add_row: false,
+				})
+			}, __("Update Materials"));
 					frm.add_custom_button(__('Remove Material'), () => frm.events.delete_material_item(frm), __("Update Materials"));
-					
-								
-					
-					
+
+
+
+
 					frm.add_custom_button(__('Send To Reserved'), () => frm.events.make_stock_entry_send_to_reserved(frm), __('Create Stock Entry'));
 					frm.add_custom_button(__('Return From Reserved'), () => frm.events.make_stock_entry_return_from_reserved(frm), __('Create Stock Entry'));
 					frm.add_custom_button(__('Send To WIP'), () => frm.events.make_stock_entry_send_to_wip(frm), __('Create Stock Entry'));
 					frm.add_custom_button(__('Return From WIP'), () => frm.events.make_stock_entry_return_from_wip(frm), __('Create Stock Entry'));
-					
+
 					if (frm.has_perm("submit")) {
 						if(flt(frm.doc.per_reserved, 6) < 100 || flt(frm.doc.per_transferred) < 100) {
 							// hold
@@ -170,9 +177,9 @@ frappe.ui.form.on("Collect Production Item", {
 						if(flt(frm.doc.per_reserved, 6) == 100 && flt(frm.doc.per_transferred) == 100) {
 							// hold
 							frm.add_custom_button(__('Complete'), () => frm.events.complete_collect_production_item(frm), __("Status"));
-							
+
 						}
-						
+
 					}
 
 				}
@@ -186,8 +193,8 @@ frappe.ui.form.on("Collect Production Item", {
 				frm.add_custom_button(__('Waiting for Approval'), () => frm.events.make_waiting_for_approval(frm), __("Status"));
 			}
 		}
-		
-		
+
+
 	},
 	hold_sales_order: function(frm) {
 		// only message
@@ -276,7 +283,8 @@ frappe.ui.form.on("Collect Production Item", {
 						reference_doctype: frm.doctype,
 						reference_name: frm.docname,
 						content: __('Reason for back to (Waiting for Approval): ')+data.reason_for_hold,
-						comment_email: frappe.session.user
+						comment_email: frappe.session.user,
+						comment_by: frappe.session.user_fullname
 					},
 					callback: function(r) {
 						if(!r.exc) {
@@ -305,7 +313,7 @@ frappe.ui.form.on("Collect Production Item", {
 			}
 		});
 	},
-	update_cost: function(frm) {
+	update_cost: function(frm, save_doc=false) {
 		return frappe.call({
 			doc: frm.doc,
 			method: "update_cost",
@@ -313,7 +321,7 @@ frappe.ui.form.on("Collect Production Item", {
 			args: {
 				update_parent: true,
 				from_child_bom:false,
-				save: false
+				save: save_doc
 			},
 			callback: function(r) {
 				refresh_field("items");
@@ -324,9 +332,16 @@ frappe.ui.form.on("Collect Production Item", {
 	add_new_material_item: function(frm) {
 		const cannot_add_row = false;
 		const child_docname = "items";
+		const child_meta = frappe.get_meta('${frm.doc.doctype} Item');
+		const get_precision = (fieldname) => child_meta.fields.find(f => f.fieldname == fieldname).precision;
 
 		this.data = [];
 		const fields = [{
+			fieldtype:'Data',
+			fieldname:"docname",
+			read_only: 1,
+			hidden: 1,
+		}, {
 			fieldtype:'Link',
 			fieldname:"item_code",
 			options: 'Item',
@@ -335,13 +350,41 @@ frappe.ui.form.on("Collect Production Item", {
 			disabled: 0,
 			label: __('Item Code')
 		}, {
-			fieldtype:'Float',
-			fieldname:"qty",
-			default: 0,
-			read_only: 0,
-			in_list_view: 1,
-			label: __('Qty')
-		}];
+		fieldtype:'Link',
+		fieldname:'uom',
+		options: 'UOM',
+		read_only: 0,
+		label: __('UOM'),
+		reqd: 1,
+		onchange: function () {
+			frappe.call({
+				method: "erpnext.stock.get_item_details.get_conversion_factor",
+				args: { item_code: this.doc.item_code, uom: this.value },
+				callback: r => {
+					if(!r.exc) {
+						if (this.doc.conversion_factor == r.message.conversion_factor) return;
+
+						const docname = this.doc.docname;
+						dialog.fields_dict.trans_items.df.data.some(doc => {
+							if (doc.docname == docname) {
+								doc.conversion_factor = r.message.conversion_factor;
+								dialog.fields_dict.trans_items.grid.refresh();
+								return true;
+							}
+						})
+					}
+				}
+			});
+		}
+	}, {
+		fieldtype:'Float',
+		fieldname:"qty",
+		default: 0,
+		read_only: 0,
+		in_list_view: 1,
+		label: __('Qty'),
+		precision: get_precision("qty")
+	}];
 
 
 		const dialog = new frappe.ui.Dialog({
@@ -364,9 +407,10 @@ frappe.ui.form.on("Collect Production Item", {
 			],
 
 			primary_action: function() {
-				var trans_items = this.get_values()["trans_items"];
+				const trans_items = this.get_values()["trans_items"].filter((item) => !!item.item_code);
 				frm.call({
 					method: 'psp_control.psp_control.doctype.collect_production_item.collect_production_item.make_add_new_material',
+					freeze: true,
 					args: {
 						'trans_items': trans_items,
 						'reference_name': frm.docname
@@ -479,15 +523,20 @@ erpnext.collect_production_item.set_default_warehouse = function(frm) {
 };
 
 var get_bom_material_detail= function(doc, cdt, cdn, scrap_items) {
+	if (!doc.company) {
+		frappe.throw({message: __("Please select a Company first."), title: __("Mandatory")});
+	}
 	var d = locals[cdt][cdn];
 	if (d.item_code) {
 		return frappe.call({
 			doc: doc,
 			method: "get_bom_material_detail",
 			args: {
-				'item_code': d.item_code,
-				'qty': d.qty,
+				"company": doc.company,
+				"item_code": d.item_code,
+				"qty": d.qty,
 				"stock_qty": d.stock_qty,
+				"include_item_in_manufacturing": d.include_item_in_manufacturing,
 				"uom": d.uom,
 				"stock_uom": d.stock_uom,
 				"conversion_factor": d.conversion_factor
@@ -589,3 +638,127 @@ frappe.ui.form.on("Collect Production Item Materials", "item_code", function(frm
 });
 
 
+
+erpnext.utils.add_new_material_item = function(opts) {
+	const frm = opts.frm;
+	const cannot_add_row = (typeof opts.cannot_add_row === 'undefined') ? true : opts.cannot_add_row;
+	const child_docname = (typeof opts.cannot_add_row === 'undefined') ? "items" : opts.child_docname;
+
+	this.data = [];
+	const fields = [{
+		fieldtype:'Data',
+		fieldname:"docname",
+		read_only: 1,
+		hidden: 1,
+	}, {
+		fieldtype:'Link',
+		fieldname:"item_code",
+		options: 'Item',
+		in_list_view: 1,
+		read_only: 0,
+		disabled: 0,
+		label: __('Item Code'),
+		get_query: function() {
+			let filters;
+			if (frm.doc.doctype == 'Sales Order') {
+				filters = {"is_sales_item": 1};
+			} else if (frm.doc.doctype == 'Purchase Order') {
+				if (frm.doc.is_subcontracted == "Yes") {
+					filters = {"is_sub_contracted_item": 1};
+				} else {
+					filters = {"is_purchase_item": 1};
+				}
+			}
+			return {
+				query: "erpnext.controllers.queries.item_query",
+				filters: filters
+			};
+		}
+	}, {
+		fieldtype:'Link',
+		fieldname:'uom',
+		options: 'UOM',
+		read_only: 0,
+		label: __('UOM'),
+		reqd: 1,
+		onchange: function () {
+			frappe.call({
+				method: "erpnext.stock.get_item_details.get_conversion_factor",
+				args: { item_code: this.doc.item_code, uom: this.value },
+				callback: r => {
+					if(!r.exc) {
+						if (this.doc.conversion_factor == r.message.conversion_factor) return;
+
+						const docname = this.doc.docname;
+						dialog.fields_dict.trans_items.df.data.some(doc => {
+							if (doc.docname == docname) {
+								doc.conversion_factor = r.message.conversion_factor;
+								dialog.fields_dict.trans_items.grid.refresh();
+								return true;
+							}
+						})
+					}
+				}
+			});
+		}
+	}, {
+		fieldtype:'Float',
+		fieldname:"qty",
+		default: 0,
+		read_only: 0,
+		in_list_view: 1,
+		label: __('Qty')
+	}];
+
+
+	const dialog = new frappe.ui.Dialog({
+		title: __("Add or Reduce Items Materials"),
+		fields: [
+			{
+				fieldname: "trans_items",
+				fieldtype: "Table",
+				label: "Items",
+				description: __('Allow to reduce quantity by set as (-1)'),
+				cannot_add_rows: cannot_add_row,
+				in_place_edit: false,
+				reqd: 1,
+				data: this.data,
+				get_data: () => {
+					return this.data;
+				},
+				fields: fields
+			},
+		],
+		primary_action: function() {
+			const trans_items = this.get_values()["trans_items"].filter((item) => !!item.item_code);
+			frappe.call({
+				method: 'psp_control.psp_control.doctype.collect_production_item.collect_production_item.make_add_new_material',
+				freeze: true,
+				args: {
+					'trans_items': trans_items,
+					'reference_name': frm.docname
+				},
+				callback: function() {
+					frm.reload_doc();
+				}
+			});
+			this.hide();
+			refresh_field("items");
+		},
+		primary_action_label: __('Submit')
+	});
+
+	frm.doc[opts.child_docname].forEach(d => {
+		dialog.fields_dict.trans_items.df.data.push({
+			"docname": d.name,
+			"name": d.name,
+			"item_code": d.item_code,
+			"qty": d.qty,
+			"rate": d.rate,
+			"uom": d.uom
+		});
+		this.data = dialog.fields_dict.trans_items.df.data;
+		dialog.fields_dict.trans_items.grid.refresh();
+	})
+	dialog.show();
+}

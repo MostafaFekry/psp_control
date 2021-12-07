@@ -94,10 +94,12 @@ doc_events = {
         "on_cancel": "psp_control.api.stock_entry_on_cancel"
     },
 	"BOM": {
-        "on_submit": "psp_control.api.bom_on_submit"
+        "on_submit": "psp_control.api.bom_on_submit",
+        "on_cancel": "psp_control.api.bom_on_cancel"
     },
 	"Work Order": {
-        "on_submit": "psp_control.api.work_order_on_submit"
+        "on_submit": "psp_control.api.work_order_on_submit",
+        "on_cancel": "psp_control.api.work_order_on_cancel"
     }
 }
 
@@ -134,9 +136,11 @@ doc_events = {
 # 	"frappe.desk.doctype.event.event.get_events": "psp_control.event.get_events"
 # }
 
-fixtures = [{"dt": "Custom Script", "filters": [["name", "in", [
-		"Stock Entry-Client",
-		"Work Order-Client"
+fixtures = [{"dt": "Client Script", "filters": [["name", "in", [
+		"Stock Entry-Form",
+		"Work Order-Form",
+		"Sales Order-Form"
+
 	]]]}
 	,{"dt": "Stock Entry Type", "filters": [["name", "in", [
 		"Send To Reserved",
@@ -144,7 +148,7 @@ fixtures = [{"dt": "Custom Script", "filters": [["name", "in", [
 		"Send To WIP",
 		"Return From WIP"
 	]]]},
-    {"dt": "Custom Field", "filters": [["name", "like", 
+    {"dt": "Custom Field", "filters": [["name", "like",
         "%collect_production_item%"
     ]]}
 ]

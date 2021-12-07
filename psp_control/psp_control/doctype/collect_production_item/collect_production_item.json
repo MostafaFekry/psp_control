@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2019-08-16 16:31:16.664417",
  "doctype": "DocType",
  "document_type": "Document",
@@ -14,7 +15,9 @@
   "col_break1",
   "status",
   "quantity",
+  "sales_order",
   "expected_delivery_date",
+  "project",
   "section_warehouses",
   "default_source_warehouse",
   "wip_warehouse",
@@ -43,9 +46,8 @@
   "conversion_rate",
   "currency",
   "rm_cost_as_per",
+  "plc_conversion_rate",
   "col_break9",
-  "sales_order",
-  "project",
   "amended_from"
  ],
  "fields": [
@@ -108,7 +110,6 @@
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company",
-   "print_hide": 1,
    "remember_last_selected_value": 1,
    "reqd": 1
   },
@@ -158,6 +159,7 @@
   },
   {
    "allow_on_submit": 1,
+   "fetch_from": "sales_order.delivery_date",
    "fieldname": "expected_delivery_date",
    "fieldtype": "Date",
    "label": "Expected Delivery Date",
@@ -165,6 +167,7 @@
   },
   {
    "allow_on_submit": 1,
+   "fetch_from": "sales_order.project",
    "fieldname": "project",
    "fieldtype": "Link",
    "label": "Project",
@@ -366,11 +369,19 @@
    "no_copy": 1,
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.rm_cost_as_per=='Price List'",
+   "fieldname": "plc_conversion_rate",
+   "fieldtype": "Float",
+   "label": "Price List Exchange Rate"
   }
  ],
  "icon": "fa fa-sitemap",
  "is_submittable": 1,
- "modified": "2019-08-27 14:14:15.148149",
+ "links": [],
+ "modified": "2021-12-07 16:33:21.789035",
  "modified_by": "Administrator",
  "module": "PSP Control",
  "name": "Collect Production Item",

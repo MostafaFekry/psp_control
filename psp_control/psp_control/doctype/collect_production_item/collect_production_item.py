@@ -3,24 +3,28 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe
-import json
-import frappe, erpnext
-from frappe.utils import cint, cstr, flt, nowdate, get_link_to_form
-from frappe.model.document import Document
-from frappe import _
-from erpnext.setup.utils import get_exchange_rate
-from erpnext.stock.get_item_details import get_conversion_factor
-from erpnext.stock.utils import get_bin, validate_warehouse_company, get_latest_stock_qty
-from frappe.desk.notifications import clear_doctype_notifications
-from frappe.model.mapper import get_mapped_doc
-from frappe.desk.form.utils import add_comment
-
 import functools
-
+from collections import deque
+from operator import itemgetter
+from typing import List
 from six import string_types
 
-from operator import itemgetter
+import json
+import frappe
+from frappe import _
+from frappe.core.doctype.version.version import get_diff
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cint, cstr, flt, today, nowdate, get_link_to_form
+from frappe.model.document import Document
+from frappe.desk.notifications import clear_doctype_notifications
+from frappe.desk.form.utils import add_comment
+
+import erpnext
+from erpnext.setup.utils import get_exchange_rate
+from erpnext.stock.doctype.item.item import get_item_details
+from erpnext.stock.get_item_details import get_conversion_factor, get_price_list_rate
+from erpnext.stock.utils import get_bin, validate_warehouse_company, get_latest_stock_qty
+
 
 class CollectProductionItem(Document):
 	def autoname(self):
@@ -40,8 +44,8 @@ class CollectProductionItem(Document):
 			idx = 1
 
 		self.name = 'CIP-BOM-' + self.item + ('-%.3i' % idx)
-	
-	
+
+
 	def validate(self):
 		self.validate_main_item()
 		self.set_conversion_rate()
@@ -52,14 +56,14 @@ class CollectProductionItem(Document):
 		self.validate_sales_order()
 		self.validate_default_warehouse()
 
-		
+
 		if not self.reserved_status: self.reserved_status = 'Not Reserved'
 		if not self.transferred_status: self.transferred_status = 'Not Transferred'
 		self.status = self.get_status()
-	
+
 	def on_update(self):
 		self.update_stock_qty()
-	
+
 	def update_stock_qty(self):
 		for m in self.get('items'):
 			if not m.conversion_factor:
@@ -71,8 +75,8 @@ class CollectProductionItem(Document):
 				m.qty = m.stock_qty
 
 			m.db_update()
-	
-	
+
+
 	def validate_main_item(self):
 		""" Validate main FG item"""
 		item = self.get_item_det(self.item)
@@ -87,13 +91,13 @@ class CollectProductionItem(Document):
 
 		if not self.quantity:
 			frappe.throw(_("Quantity should be greater than 0"))
-	
+
 	def set_conversion_rate(self):
 		if self.currency == self.company_currency():
 			self.conversion_rate = 1
 		elif self.conversion_rate == 1 or flt(self.conversion_rate) <= 0:
 			self.conversion_rate = get_exchange_rate(self.currency, self.company_currency(), args="for_buying")
-	
+
 	def validate_uom_is_interger(self):
 		from erpnext.utilities.transaction_base import validate_uom_is_integer
 		validate_uom_is_integer(self, "uom", "qty", "Collect Production Item Materials")
@@ -107,19 +111,19 @@ class CollectProductionItem(Document):
 		if not default_source_warehouse:
 			frappe.throw(_("Default Source Warehouse not defined in PSP Settings"))
 		self.default_source_warehouse = default_source_warehouse
-		
+
 		wip_warehouse = frappe.db.get_single_value("Manufacturing Settings",
 			"default_wip_warehouse")
 		if not wip_warehouse:
 			frappe.throw(_("Default Work in Progress Warehouse not defined in Manufacturing Settings"))
 		self.wip_warehouse = wip_warehouse
-		
+
 		reserve_warehouse = frappe.db.get_single_value("PSP Settings",
 			"default_reserve_warehouse")
 		if not reserve_warehouse:
 			frappe.throw(_("Default Reserve Warehouse not defined in PSP Settings"))
 		self.reserve_warehouse = reserve_warehouse
-		
+
 	def set_bom_material_details(self):
 		for item in self.get("items"):
 
@@ -136,14 +140,14 @@ class CollectProductionItem(Document):
 			for r in ret:
 				if not item.get(r):
 					item.set(r, ret[r])
-		
+
 		self.set_available_qty()
-	
+
 	def set_available_qty(self):
 		for d in self.get("items"):
 			if self.default_source_warehouse:
 				d.available_qty_at_source_warehouse = get_latest_stock_qty(d.item_code, self.default_source_warehouse)
-				
+
 	def validate_materials(self):
 		""" Validate raw material entries """
 
@@ -162,7 +166,7 @@ class CollectProductionItem(Document):
 				frappe.throw(_("Quantity required for Item {0} in row {1}").format(m.item_code, m.idx))
 			check_list.append(m)
 
-		
+
 		duplicate_items = list(get_duplicates(check_list))
 		if duplicate_items:
 			li = []
@@ -171,8 +175,8 @@ class CollectProductionItem(Document):
 			duplicate_list = '<br>' + '<br>'.join(li)
 
 			frappe.throw(_("Same item has been entered multiple times. {0}").format(duplicate_list))
-				
-	
+
+	@frappe.whitelist()
 	def get_bom_material_detail(self, args=None):
 		""" Get raw material details like uom, desc and rate"""
 		if not args:
@@ -181,11 +185,12 @@ class CollectProductionItem(Document):
 		if isinstance(args, string_types):
 			import json
 			args = json.loads(args)
-
 		item = self.get_item_det(args['item_code'])
-		self.validate_rm_item(item)
+		"""self.validate_rm_item(item)"""
 
-		args.update(item[0])
+		args['transfer_for_manufacture'] = (cstr(args.get('include_item_in_manufacturing', '')) or
+			item and item.include_item_in_manufacturing or 0)
+		args.update(item)
 
 		rate = self.get_rm_rate(args)
 		ret_item = {
@@ -199,21 +204,20 @@ class CollectProductionItem(Document):
 			 'rate'			: rate,
 			 'qty'			: args.get("qty") or args.get("stock_qty") or 1,
 			 'stock_qty'	: args.get("qty") or args.get("stock_qty") or 1,
-			 'base_rate'	: rate
+			 'base_rate'	: rate,
+			 'include_item_in_manufacturing': cint(args.get('transfer_for_manufacture'))
 		}
 
 		return ret_item
-	
+
 	def get_item_det(self, item_code):
-		item = frappe.db.sql("""select name, item_name, docstatus, description, image,
-			is_sub_contracted_item,is_stock_item, stock_uom, default_bom, last_purchase_rate, include_item_in_manufacturing
-			from `tabItem` where name=%s""", item_code, as_dict = 1)
+		item = get_item_details(item_code)
 
 		if not item:
 			frappe.throw(_("Item: {0} does not exist in the system").format(item_code))
 
 		return item
-	
+
 	def get_rm_rate(self, arg):
 		"""	Get raw material rate as per selected method, if bom exists takes bom cost """
 		rate = 0
@@ -234,8 +238,9 @@ class CollectProductionItem(Document):
 					frappe.msgprint(_("{0} not found for item {1}")
 						.format(self.rm_cost_as_per, arg["item_code"]), alert=True)
 
-		return flt(rate) / (self.conversion_rate or 1)
-	
+		return flt(rate) * flt(self.plc_conversion_rate or 1) / (self.conversion_rate or 1)
+
+	@frappe.whitelist()
 	def update_cost(self, update_parent=True, from_child_bom=False, save=True):
 		if self.docstatus == 2:
 			return
@@ -243,7 +248,11 @@ class CollectProductionItem(Document):
 		existing_bom_cost = self.total_cost
 
 		for d in self.get("items"):
+			if not d.item_code:
+				continue
+
 			rate = self.get_rm_rate({
+				"company": self.company,
 				"item_code": d.item_code,
 				"qty": d.qty,
 				"uom": d.uom,
@@ -253,19 +262,24 @@ class CollectProductionItem(Document):
 			if rate:
 				d.rate = rate
 			d.amount = flt(d.rate) * flt(d.qty)
+			d.base_rate = flt(d.rate) * flt(self.conversion_rate)
+			d.base_amount = flt(d.amount) * flt(self.conversion_rate)
+			if self.default_source_warehouse:
+				d.available_qty_at_source_warehouse = get_latest_stock_qty(d.item_code, self.default_source_warehouse)
+			if save:
+				d.db_update()
 
-		self.set_available_qty()
-		
+
+
+
 		if self.docstatus == 1:
 			self.flags.ignore_validate_update_after_submit = True
 			self.calculate_cost()
-		#if save:
-			self.save()
+		if save:
+			self.db_update()
 
+		frappe.msgprint(_("Cost and Available Qty Updated"), alert=True)
 
-		#if not from_child_bom:
-			#frappe.msgprint(_("Available Qty and Cost Updated"))
-	
 	def get_valuation_rate(self, args):
 		""" Get weighted average of valuation rate from all warehouses """
 
@@ -290,18 +304,18 @@ class CollectProductionItem(Document):
 			valuation_rate = frappe.db.get_value("Item", args['item_code'], "valuation_rate")
 
 		return valuation_rate
-		
+
 	def validate_rm_item(self, item):
 		if (item[0]['name'] in [it.item_code for it in self.items]) and item[0]['name'] == self.item:
 			frappe.throw(_("Collect Production Item - BOM #{0}: Raw material cannot be same as main Item").format(self.name))
-	
-	
+
+
 	def calculate_cost(self):
 		"""Calculate bom totals"""
 		self.calculate_rm_cost()
 		self.total_cost = self.raw_material_cost
 		self.base_total_cost = self.base_raw_material_cost
-	
+
 	def calculate_rm_cost(self):
 		"""Fetch RM rate as per today's valuation rate and calculate totals"""
 		total_rm_cost = 0
@@ -319,7 +333,8 @@ class CollectProductionItem(Document):
 
 		self.raw_material_cost = total_rm_cost
 		self.base_raw_material_cost = base_total_rm_cost
-	
+
+
 	def company_currency(self):
 		return erpnext.get_company_currency(self.company)
 
@@ -360,12 +375,12 @@ class CollectProductionItem(Document):
 				self.validate_work_order_against_so()
 			else:
 				frappe.throw(_("Sales Order {0} is not valid").format(self.sales_order))
-	
+
 	def check_sales_order_on_hold_or_close(self):
 		status = frappe.db.get_value("Sales Order", self.sales_order, "status")
 		if status in ("Closed", "On Hold"):
 			frappe.throw(_("Sales Order {0} is {1}").format(self.sales_order, status))
-	
+
 	def validate_work_order_against_so(self):
 		# already ordered qty
 		ordered_qty_against_so = frappe.db.sql("""select sum(quantity) from `tabCollect Production Item`
@@ -391,7 +406,7 @@ class CollectProductionItem(Document):
 		if total_qty > so_qty + (allowance_percentage/100 * so_qty):
 			frappe.throw(_("Cannot produce more Item {0} than Sales Order quantity {1}")
 				.format(self.item, so_qty), OverProductionError)
-	
+
 	def check_modified_date(self):
 		mod_db = frappe.db.get_value("Collect Production Item", self.name, "modified")
 		date_diff = frappe.db.sql("select TIMEDIFF('%s', '%s')" %
@@ -399,7 +414,7 @@ class CollectProductionItem(Document):
 		if date_diff and date_diff[0][0]:
 			frappe.throw(_("{0} {1} has been modified. Please refresh.").format(self.doctype, self.name))
 
-	
+
 	def update_status(self, status=None):
 		self.check_modified_date()
 		'''Update status of work order if unknown'''
@@ -447,10 +462,10 @@ def cpi_update_status(reference_name):
 			all_qty = all_qty + item.get("stock_qty")
 			all_reserved_qty = all_reserved_qty + item.get("reserved_qty_at_reserve_warehouse") + item.get("transferred_qty_to_wip_warehouse")
 			all_transferred_qty = all_transferred_qty + item.get("transferred_qty_to_wip_warehouse")
-	
+
 	all_reserved_qty_prcent = (all_reserved_qty * 100) / all_qty
 	if all_reserved_qty_prcent == 0:
-		doc.db_set('reserved_status', 'Not Reserved', update_modified=False)	
+		doc.db_set('reserved_status', 'Not Reserved', update_modified=False)
 	elif all_reserved_qty_prcent > 0 and all_reserved_qty_prcent < 100:
 		doc.db_set('reserved_status', 'Partly Reserved', update_modified=False)
 	elif all_reserved_qty_prcent == 100:
@@ -458,7 +473,7 @@ def cpi_update_status(reference_name):
 	else:
 		doc.db_set('reserved_status', 'Not Applicable', update_modified=False)
 	doc.db_set('per_reserved', all_reserved_qty_prcent, update_modified=False)
-	
+
 	all_transferred_qty_prcent = (all_transferred_qty * 100) / all_qty
 	if all_transferred_qty_prcent == 0:
 		doc.db_set('transferred_status', 'Not Transferred', update_modified=False)
@@ -472,8 +487,8 @@ def cpi_update_status(reference_name):
 	else:
 		doc.db_set('transferred_status', 'Not Applicable', update_modified=False)
 	doc.db_set('per_transferred', all_transferred_qty_prcent, update_modified=False)
-		
-		
+
+
 @frappe.whitelist()
 def get_default_warehouse():
 	default_source_warehouse = frappe.db.get_single_value("PSP Settings",
@@ -502,12 +517,13 @@ def get_requested_item_qty(collect_production_item):
 			and collect_production_item = %s
 		group by collect_production_item_materials
 	""", collect_production_item))
-	
+
 def get_material_request(collect_production_item):
 	return frappe.db.sql_list("""select t1.name
 			from `tabMaterial Request` t1,`tabMaterial Request Item` t2
 			where t1.name = t2.parent and t2.collect_production_item = %s and t1.docstatus = 0""",
 			collect_production_item)
+
 
 @frappe.whitelist()
 def make_material_request(source_name, target_doc=None):
@@ -527,7 +543,7 @@ def make_material_request(source_name, target_doc=None):
 
 		if qty <0:
 			qty = 0
-			
+
 		target.warehouse = source_parent.default_source_warehouse
 		target.project = source_parent.project
 		target.qty = qty
@@ -621,7 +637,7 @@ def make_add_new_material(trans_items, reference_name):
 	doc.set_bom_material_details()
 	doc.update_cost()
 	doc.save()
-	
+
 def delete_item_material(collect_production_item,reference_name,child_item_doc):
 	frappe.db.sql("""
 		DELETE FROM `tabCollect Production Item Materials` WHERE name = %s and parent = %s
@@ -630,10 +646,10 @@ def get_all_item_material(reference_name):
 	all_item_material = frappe.get_all("Collect Production Item Materials",
 		filters={"parent": reference_name}, order_by="idx asc")
 	return all_item_material
-	
+
 @frappe.whitelist()
 def make_remove_item_material(reference_doctype, reference_name,delet_item_code, content, comment_email):
-	
+
 	#frappe.throw(_("{0} need to remove").format(delet_item_code))
 	child_item_name = check_item_material(delet_item_code,reference_name)
 	if child_item_name:
@@ -654,7 +670,7 @@ def make_remove_item_material(reference_doctype, reference_name,delet_item_code,
 			idx_count = idx_count + 1
 	else:
 		frappe.throw(_("Selected item ({0}) not at Material Items").format(delet_item_code))
-		
+
 	cpi_update_status(reference_name)
 	add_new_comment = add_comment(reference_doctype, reference_name, content, comment_email)
 	doc = frappe.get_doc('Collect Production Item', reference_name)
@@ -665,7 +681,7 @@ def make_remove_item_material(reference_doctype, reference_name,delet_item_code,
 	doc.update_cost()
 	doc.save()
 	return add_new_comment
-	
+
 
 
 def get_stock_entry_qty(collect_production_item):
@@ -676,7 +692,7 @@ def get_stock_entry_qty(collect_production_item):
 			and collect_production_item = %s
 		group by collect_production_item_materials
 	""", collect_production_item))
-	
+
 def get_stock_entry(collect_production_item,purpose):
 	return frappe.db.sql_list("""select t1.name , sum(t2.transfer_qty)
 			from `tabStock Entry` t1,`tabStock Entry Detail` t2
@@ -707,7 +723,7 @@ def make_stock_entry_send_to_reserved(reference_name, target_doc=None):
 
 		if qty <0:
 			qty = 0
-			
+
 		target.s_warehouse = source_parent.default_source_warehouse
 		target.t_warehouse = source_parent.reserve_warehouse
 		target.project = source_parent.project
@@ -757,7 +773,7 @@ def make_stock_entry_return_from_reserved(reference_name, target_doc=None):
 	def update_item(source, target, source_parent):
 		# qty is for packed items, because packed items don't have stock_qty field
 		qty = source.get("reserved_qty_at_reserve_warehouse")
-			
+
 		target.s_warehouse = source_parent.reserve_warehouse
 		target.t_warehouse = source_parent.default_source_warehouse
 		target.project = source_parent.project
@@ -786,7 +802,7 @@ def make_stock_entry_return_from_reserved(reference_name, target_doc=None):
 		}
 	}, target_doc, postprocess)
 
-	return doc	
+	return doc
 
 @frappe.whitelist()
 def make_stock_entry_send_to_wip(reference_name, target_doc=None):
@@ -807,7 +823,7 @@ def make_stock_entry_send_to_wip(reference_name, target_doc=None):
 	def update_item(source, target, source_parent):
 		# qty is for packed items, because packed items don't have stock_qty field
 		qty = source.get("reserved_qty_at_reserve_warehouse")
-			
+
 		target.s_warehouse = source_parent.reserve_warehouse
 		target.t_warehouse = source_parent.wip_warehouse
 		target.project = source_parent.project
@@ -837,7 +853,7 @@ def make_stock_entry_send_to_wip(reference_name, target_doc=None):
 	}, target_doc, postprocess)
 
 	return doc
-	
+
 @frappe.whitelist()
 def make_stock_entry_return_from_wip(reference_name, target_doc=None):
 	check_stock_entry = get_stock_entry(reference_name,'Send To Reserved')
@@ -857,7 +873,7 @@ def make_stock_entry_return_from_wip(reference_name, target_doc=None):
 	def update_item(source, target, source_parent):
 		# qty is for packed items, because packed items don't have stock_qty field
 		qty = source.get("transferred_qty_to_wip_warehouse")
-			
+
 		target.s_warehouse = source_parent.wip_warehouse
 		target.t_warehouse = source_parent.default_source_warehouse
 		target.project = source_parent.project
@@ -902,10 +918,10 @@ def make_bom(reference_name, target_doc=None):
 			.format(", ".join(check_make_bom)))
 
 	#def postprocess(source, doc):
-		
+
 
 	def update_item(source, target, source_parent):
-			
+
 		target.collect_production_item = source_parent.name
 		target.source_warehouse = source_parent.wip_warehouse
 
@@ -948,6 +964,74 @@ def make_bom(reference_name, target_doc=None):
 		}
 	}, target_doc)
 
-	return doc	
-	
-	
+	return doc
+
+@frappe.whitelist()
+def get_collect_production_item_items(company,sales_order, for_raw_material_request=0):
+	'''Returns items with BOM that already do not have a linked work order'''
+	items = []
+
+	sales_order_item = frappe.get_all("Sales Order Item",
+		fields=["idx","item_code","name","item_name","description","qty","delivery_date"],
+		filters={"parent": sales_order}, order_by="idx asc")
+
+	for table in [sales_order_item]:
+		for i in table:
+			stock_qty = i.qty
+			if not for_raw_material_request:
+				total_work_order_qty = flt(frappe.db.sql('''select sum(quantity) from `tabCollect Production Item`
+					where item=%s and sales_order=%s and docstatus<2''', (i.item_code, sales_order))[0][0])
+				pending_qty = stock_qty - total_work_order_qty
+			else:
+				pending_qty = stock_qty
+
+			if pending_qty:
+				items.append(dict(
+					name= i.name,
+					item_code= i.item_code,
+					description= i.description,
+					pending_qty = pending_qty,
+					required_qty = pending_qty if for_raw_material_request else 0,
+					sales_order_item = i.name,
+					delivery_date = i.delivery_date
+				))
+	return items
+@frappe.whitelist()
+def make_collect_production_item_items(items, sales_order, company, project=None):
+	'''Make collect_production_item against the given Sales Order for the given `items`'''
+	items = json.loads(items).get('items')
+	out = []
+	def get_collect_production_item_materials_dict(collect_production_item_materials_item_name,default_uom):
+			return frappe._dict({
+				"uom": default_uom,
+				"rate": 0.0,
+				"qty": 1,
+				"conversion_factor": 1.0,
+				"item_code": collect_production_item_materials_item_name,
+				"description": "Opening Material Item"
+			})
+	collect_production_item_materials_item_name = frappe.db.get_single_value("PSP Settings", "default_item_raw_materials") or _("Opening Material Item")
+	default_uom = frappe.db.get_single_value("Stock Settings", "stock_uom") or _("Nos")
+	collect_production_item_materials_item = get_collect_production_item_materials_dict(collect_production_item_materials_item_name,default_uom)
+
+	for i in items:
+		if not i.get("pending_qty"):
+			frappe.throw(_("Please select Qty against item {0}").format(i.get("item_code")))
+		default_item_raw_materials = frappe.db.get_single_value("PSP Settings","default_item_raw_materials")
+		if not default_item_raw_materials:
+			frappe.throw(_("Please Set default item row material in PSP Settings").format(i.get("item_code")))
+		collect_production_item = frappe.get_doc(dict(
+			doctype='Collect Production Item',
+			item=i['item_code'],
+			quantity=i['pending_qty'],
+			company=company,
+			sales_order=sales_order,
+			expected_delivery_date=i['delivery_date'],
+			project=project,
+			description=i['description'],
+			items=[collect_production_item_materials_item]
+		)).insert(ignore_mandatory=True)
+		collect_production_item.save()
+		out.append(collect_production_item)
+
+	return [p.name for p in out]
