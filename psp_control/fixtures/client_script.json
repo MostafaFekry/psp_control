@@ -17,12 +17,12 @@
   "doctype": "Client Script",
   "dt": "Work Order",
   "enabled": 1,
-  "modified": "2021-12-07 16:36:02.799519",
+  "modified": "2022-01-03 10:22:50.523443",
   "name": "Work Order-Form",
   "parent": null,
   "parentfield": null,
   "parenttype": null,
-  "script": "frappe.ui.form.on('Work Order', {\n\tonload(frm) {\n\t\t// your code here\n\t\tif (frm.doc.bom_no) {\n    \t\tfrappe.db.get_doc(\"BOM\", frm.doc.bom_no)\n\t\t\t\t.then((doc) => {\n\t\t\t\t\tfrm.set_value({\n\t\t\t\t\t\t\"collect_production_item\": doc.collect_production_item,\n\t\t\t\t\t\t\"sales_order\": doc.sales_order,\n\t\t\t\t\t\t\"skip_transfer\":1\n\t\t\t\t\t})\n\t\t\t\t});\n    \t\n\t\t}\n\t\tcur_frm.add_fetch('BOM',  'collect_production_item',  'collect_production_item');\n\t}\n})",
+  "script": "frappe.ui.form.on('Work Order', {\n\tonload(frm) {\n\t\t// your code here\n\t\tif (frm.doc.bom_no) {\n    \t\tfrappe.db.get_doc(\"BOM\", frm.doc.bom_no)\n\t\t\t\t.then((doc) => {\n\t\t\t\t    if (doc.collect_production_item) {\n    \t\t\t\t\tfrm.set_value({\n    \t\t\t\t\t\t\"collect_production_item\": doc.collect_production_item,\n    \t\t\t\t\t\t\"sales_order\": doc.sales_order,\n    \t\t\t\t\t\t\"skip_transfer\":1\n    \t\t\t\t\t})\n\t\t\t\t    }\n\t\t\t\t});\n    \t\n\t\t}\n\t\tcur_frm.add_fetch('BOM',  'collect_production_item',  'collect_production_item');\n\t}\n})",
   "view": "Form"
  },
  {
@@ -30,12 +30,12 @@
   "doctype": "Client Script",
   "dt": "Stock Entry",
   "enabled": 1,
-  "modified": "2021-12-07 16:36:58.310721",
+  "modified": "2022-01-03 10:32:42.552428",
   "name": "Stock Entry-Form",
   "parent": null,
   "parentfield": null,
   "parenttype": null,
-  "script": "frappe.ui.form.on('Stock Entry', {\n\trefresh(frm) {\n\t\t// your code here\n\t\tif (frm.doc.stock_entry_type ==='Manufacture') { \n\t\t    frm.set_df_property(\"collect_production_item\", \"reqd\", frm.doc.stock_entry_type==\"Manufacture\");\n\t\t    frm.add_fetch('work_order',  'collect_production_item',  'collect_production_item');\n\t\t    if (!frm.doc.collect_production_item) {\n    \t\tfrappe.db.get_doc(\"Work Order\", frm.doc.work_order)\n\t\t\t\t.then((doc) => {\n\t\t\t\t\tfrm.set_value({\n\t\t\t\t\t\t\"collect_production_item\": doc.collect_production_item\n\t\t\t\t\t})\n\t\t\t\t});\n    \t\n    \t\t}\n\t\t}\n\t\telse\n\t\t{\n\t\t   frm.toggle_reqd(\"collect_production_item\", false);\n\t\t}\n\t}\n})",
+  "script": "frappe.ui.form.on('Stock Entry', {\n\trefresh(frm) {\n\t\t// your code here\n\t\tif (frm.doc.stock_entry_type ==='Manufacture') { \n\t\t    frm.add_fetch('work_order',  'collect_production_item',  'collect_production_item');\n\t\t    if (!frm.doc.collect_production_item) {\n    \t\tfrappe.db.get_doc(\"Work Order\", frm.doc.work_order)\n\t\t\t\t.then((doc) => {\n\t\t\t\t    if (doc.collect_production_item) {\n    \t\t\t\t\tfrm.set_value({\n    \t\t\t\t\t\t\"collect_production_item\": doc.collect_production_item\n    \t\t\t\t\t})\n\t\t\t\t    }\n\t\t\t\t});\n    \t\n    \t\t}\n\t\t}\n\t\telse\n\t\t{\n\t\t   frm.toggle_reqd(\"collect_production_item\", false);\n\t\t}\n\t}\n})",
   "view": "Form"
  }
 ]

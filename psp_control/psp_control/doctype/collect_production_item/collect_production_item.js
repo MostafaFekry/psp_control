@@ -176,7 +176,7 @@ frappe.ui.form.on("Collect Production Item", {
 						}
 						if(flt(frm.doc.per_reserved, 6) == 100 && flt(frm.doc.per_transferred) == 100) {
 							// hold
-							frm.add_custom_button(__('Complete'), () => frm.events.complete_collect_production_item(frm), __("Status"));
+							frm.add_custom_button(__('Approved'), () => frm.events.complete_collect_production_item(frm), __("Status"));
 
 						}
 
@@ -190,7 +190,7 @@ frappe.ui.form.on("Collect Production Item", {
 					frm.events.make_bom(frm);
 				});
 				bom_btn.addClass('btn-primary');
-				frm.add_custom_button(__('Waiting for Approval'), () => frm.events.make_waiting_for_approval(frm), __("Status"));
+				frm.add_custom_button(__('Return to Approval'), () => frm.events.make_waiting_for_approval(frm), __("Status"));
 			}
 		}
 
